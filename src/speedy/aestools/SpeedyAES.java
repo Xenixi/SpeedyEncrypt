@@ -1,16 +1,14 @@
 package speedy.aestools;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
-import java.util.ArrayList;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -28,60 +26,7 @@ public class SpeedyAES {
 	private final int KEYSIZE = 256, IVLENGTH = 12;
 	private SecretKey key;
 	private byte[] IV;
-
-	public static void main(String[] args) throws IOException, IllegalBlockSizeException, BadPaddingException {
-		SpeedyAES sAES = new SpeedyAES("Top Secret Password Bro");
-
-		File testFile = new File("./data/test.mp4");
-
-		FileInputStream fis = new FileInputStream(testFile);
-		FileOutputStream fos = new FileOutputStream(new File("./data/enc.mp4"), true);
-		while(true) {
-		byte[] buff = fis.readNBytes(1000000000);
-		if(buff.length < 1000000000) {
-			//final
-				fos.write(sAES.encrypt(buff));
-				System.out.println("encrypt: final ln "+sAES.encrypt(buff).length);
-			//
-			break;
-		} else {
-			//every other time
-				fos.write(sAES.encrypt(buff));
-				System.out.println("encrypt: ln "+sAES.encrypt(buff).length);
-			//
-		}
-		}
-		fos.flush();
-		fos.close();
-		fis.close();
-		
-		
-		
-		FileInputStream fis2 = new FileInputStream(new File("./data/enc.mp4"));
-		FileOutputStream fos2 = new FileOutputStream(new File("data/out.mp4"), true);
-		
-		while(true) {
-			///NOTE TO SELF - THIS WORKS BECAUSE WHEN READING THE ALREADY ENCRYPTED FILE YOU MUST FACTOR IN THE TAG LENGTH OF 16 BYTES FOR EACH SECTION
-			byte[] buff = fis2.readNBytes(1000000016);
-			if(buff.length < 1000000016) {
-				//final
-					fos2.write(sAES.decrypt(buff));
-					System.out.println("decrypt: final ln "+sAES.decrypt(buff).length);
-				//
-				break;
-			} else {
-				//every other time
-					fos2.write(sAES.decrypt(buff));
-					System.out.println("decrypt: ln "+sAES.decrypt(buff).length);
-				//
-			}
-			}
-			fos2.flush();
-			fos2.close();
-			fis2.close();
-		
-		
-	}
+	static private int bufferSize = 1000000000;
 
 	// initialize from SecretKey
 	public SpeedyAES(SecretKey key) {
@@ -135,7 +80,6 @@ public class SpeedyAES {
 			return decrypt(input, IV, key);
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException
 				| InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return null;
@@ -180,7 +124,6 @@ public class SpeedyAES {
 			return cip;
 		} catch (InvalidKeyException | InvalidAlgorithmParameterException | NoSuchAlgorithmException
 				| NoSuchPaddingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -199,11 +142,74 @@ public class SpeedyAES {
 			return cip;
 		} catch (InvalidKeyException | InvalidAlgorithmParameterException | NoSuchAlgorithmException
 				| NoSuchPaddingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
 		return null;
 	}
+
+	// for large amounts of data ( and small amounts too :) )
+	public boolean blockEncrypt(InputStream is, OutputStream os) {
+		try {
+			while (true) {
+
+				byte[] buffer = is.readNBytes(bufferSize);
+
+				os.write(encrypt(buffer));
+				if (buffer.length < bufferSize) {
+					return true;
+				}
+
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+
+	}
+
+	public boolean blockDecrypt(InputStream is, OutputStream os) {
+		try {
+			while (true) {
+
+				byte[] buffer = is.readNBytes(bufferSize + TAGLENGTH);
+
+				os.write(decrypt(buffer));
+				if (buffer.length < (bufferSize + TAGLENGTH)) {
+					return true;
+				}
+
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+
+	// TEST METHOD
+	/*
+	 * public static void main(String[] args) throws IOException {
+	 * System.out.println("Encrypting..."); File testFile = new
+	 * File("./data/test.mp4"); FileInputStream fis = new FileInputStream(testFile);
+	 * SpeedyAES sAES = new SpeedyAES("krjgw543V$TW#$t$f"); FileOutputStream fos =
+	 * new FileOutputStream(new File("./data/enc.mp4"), true);
+	 * 
+	 * sAES.blockEncrypt(fis, fos);
+	 * 
+	 * fis.close(); fos.flush(); fos.close();
+	 * 
+	 * System.out.println("Decrypting..."); FileInputStream fis2 = new
+	 * FileInputStream(new File("./data/enc.mp4")); FileOutputStream fos2 = new
+	 * FileOutputStream(new File("./data/output.mp4"), true);
+	 * 
+	 * sAES.blockDecrypt(fis2, fos2);
+	 * 
+	 * fis2.close(); fos2.flush(); fos2.close();
+	 * System.out.println("Task completed.");
+	 * 
+	 * }
+	 */
 
 }
